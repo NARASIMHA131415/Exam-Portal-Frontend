@@ -17,7 +17,7 @@ const ExamDashboard = () => {
   // DB-question mode state
   const [currentQ, setCurrentQ] = useState(0);
 
-  // Unified answer state: key = questionId OR questionNumber (string), value = 'A'/'B'/'C'/'D'
+  // Unified answer state
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [showModal, setShowModal] = useState(false);
@@ -30,7 +30,7 @@ const ExamDashboard = () => {
   const [examTerminated, setExamTerminated] = useState(false);
   const MAX_TAB_SWITCHES = 3;
 
-  // ✅ FIXED: Fetch exam data with JOIN first
+  // ✅ FIXED: Fetch exam data correctly
   useEffect(() => {
     fetchExamData();
   }, [examId]);
@@ -40,42 +40,40 @@ const ExamDashboard = () => {
       setLoading(true);
       setError('');
 
-      console.log('📝 Step 1: Joining exam...');
+      console.log('📝 Step 1: Getting exam details...');
       
-      // ✅ STEP 1: First, join the exam
-      try {
-        const joinResponse = await apiService.request(`/api/exam/${examId}/join`, {
-          method: 'POST',
-          body: JSON.stringify({}),
-        });
-        console.log('✅ Join response:', joinResponse);
-      } catch (joinError) {
-        // If join fails with specific errors, handle them
-        if (joinError.message?.includes('already submitted')) {
-          setError('You have already submitted this exam. Cannot retake.');
-          setLoading(false);
-          return;
-        }
-        // Otherwise, student might already be joined, continue
-        console.log('ℹ️ Join status:', joinError.message);
-      }
-
-      console.log('📚 Step 2: Loading exam questions...');
+      // ✅ STEP 1: Get exam details (which includes exam_code)
+      const examData = await apiService.getExamQuestions(examId);
       
-      // ✅ STEP 2: Now load the questions
-      const data = await apiService.getExamQuestions(examId);
-
-      if (!data || !data.exam) {
+      if (!examData || !examData.exam) {
         setError('Invalid exam data received');
         setLoading(false);
         return;
       }
 
-      console.log('✅ Exam loaded:', data.exam);
+      const examCode = examData.exam.exam_code;
+      console.log('✅ Got exam code:', examCode);
+
+      console.log('📝 Step 2: Joining exam with code...');
       
-      setExam(data.exam);
-      setQuestions(data.questions || []);
-      setTimeLeft(data.exam.duration * 60); // Convert to seconds
+      // ✅ STEP 2: Join using exam_code (not exam_id)
+      try {
+        await apiService.joinExam(examCode);
+        console.log('✅ Joined exam successfully');
+      } catch (joinError) {
+        if (joinError.message?.includes('already submitted')) {
+          setError('You have already submitted this exam. Cannot retake.');
+          setLoading(false);
+          return;
+        }
+        console.log('ℹ️ Join status:', joinError.message);
+      }
+
+      console.log('✅ Exam loaded successfully');
+      
+      setExam(examData.exam);
+      setQuestions(examData.questions || []);
+      setTimeLeft(examData.exam.duration * 60);
 
     } catch (err) {
       console.error('❌ Error loading exam:', err);
@@ -85,25 +83,21 @@ const ExamDashboard = () => {
     }
   };
 
-  // Detect PDF mode: exam has a PDF but may have no DB questions
   const isPdfMode = exam && exam.pdf_url;
   const totalQ = isPdfMode ? exam.total_questions : questions.length;
 
-  // ─── Answer helpers ───────────────────────────────────────────────────────
-
-  // For PDF mode key = question_number (1-based string), for DB mode key = question.id (string)
   const getKey = (indexOrId) => String(indexOrId);
 
   const saveAnswerToBackend = async (key, answer) => {
     try {
       if (isPdfMode) {
-        await apiService.saveAnswer({
+        await apiService.saveAnswer(parseInt(examId), {
           exam_id: parseInt(examId),
           question_number: parseInt(key),
           answer,
         });
       } else {
-        await apiService.saveAnswer({
+        await apiService.saveAnswer(parseInt(examId), {
           exam_id: parseInt(examId),
           question_id: parseInt(key),
           answer,
@@ -125,8 +119,6 @@ const ExamDashboard = () => {
     }
   };
 
-  // ─── Build formatted answers for submission ───────────────────────────────
-
   const buildFormattedAnswers = () => {
     if (isPdfMode) {
       return Object.keys(answers).map(qNum => ({
@@ -140,8 +132,6 @@ const ExamDashboard = () => {
       }));
     }
   };
-
-  // ─── Force / Auto submit ──────────────────────────────────────────────────
 
   const handleForceSubmit = useCallback(async () => {
     if (submitted || submitting) return;
@@ -172,8 +162,6 @@ const ExamDashboard = () => {
     }
   }, [examId, answers, submitted, submitting, navigate, isPdfMode]);
 
-  // ─── Tab switch detection ─────────────────────────────────────────────────
-
   useEffect(() => {
     if (submitted || examTerminated) return;
     const handleVisibilityChange = () => {
@@ -197,8 +185,6 @@ const ExamDashboard = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [submitted, examTerminated, handleForceSubmit]);
 
-  // ─── Timer ────────────────────────────────────────────────────────────────
-
   useEffect(() => {
     if (submitted || examTerminated || !exam || loading) return;
     const timer = setInterval(() => {
@@ -213,8 +199,6 @@ const ExamDashboard = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, [submitted, examTerminated, exam, loading, handleAutoSubmit]);
-
-  // ─── Loading / error guards ───────────────────────────────────────────────
 
   const formatTime = (s) => {
     const h = Math.floor(s / 3600);
@@ -255,8 +239,6 @@ const ExamDashboard = () => {
     );
   }
 
-  // ─── Confirm Submit ───────────────────────────────────────────────────────
-
   const confirmSubmit = async () => {
     setShowModal(false);
     setSubmitting(true);
@@ -280,14 +262,11 @@ const ExamDashboard = () => {
     return 'transparent';
   };
 
-  // ─── OMR Bubble Sheet (used in both modes) ────────────────────────────────
-
   const OmrPanel = () => {
     const OPTIONS = ['A', 'B', 'C', 'D'];
 
     return (
       <div className="omr-panel">
-        {/* Timer */}
         <div className="timer-box">
           <div className="timer-label">TIME REMAINING</div>
           <div className={`timer-value ${timeLeft < 300 ? 'timer-warning' : ''}`}>
@@ -295,7 +274,6 @@ const ExamDashboard = () => {
           </div>
         </div>
 
-        {/* Tab Switch Warning */}
         {tabSwitchCount > 0 && (
           <div className={`tab-warning-bar ${tabSwitchCount >= 2 ? 'critical' : ''}`}>
             <div className="tab-warning-icon">⚠️</div>
@@ -306,16 +284,13 @@ const ExamDashboard = () => {
           </div>
         )}
 
-        {/* OMR Header */}
         <div className="omr-header">
           <h6>OMR Answer Sheet</h6>
           <span className="omr-count">{attemptedCount}/{totalQ} Answered</span>
         </div>
         <div className="omr-info-text">Click to select. Tap SAME option to deselect.</div>
 
-        {/* OMR Grid */}
         <div className="omr-sheet-container" style={{ overflowY: 'auto', flex: 1 }}>
-          {/* Column headers */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '40px repeat(4, 1fr)',
@@ -333,7 +308,6 @@ const ExamDashboard = () => {
             ))}
           </div>
 
-          {/* Rows */}
           {Array.from({ length: totalQ }, (_, i) => {
             const qNum = i + 1;
             const key = isPdfMode ? getKey(qNum) : getKey(questions[i]?.id);
@@ -353,9 +327,7 @@ const ExamDashboard = () => {
                   alignItems: 'center',
                 }}
               >
-                {/* Q number */}
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#2D0040', textAlign: 'center' }}>{qNum}</div>
-                {/* A B C D bubbles */}
                 {OPTIONS.map(opt => {
                   const isSel = selected === opt;
                   return (
@@ -392,7 +364,6 @@ const ExamDashboard = () => {
           })}
         </div>
 
-        {/* Submit Button */}
         <div className="submit-section">
           <Button className="btn-submit-exam" onClick={() => setShowModal(true)} disabled={submitting}>
             {submitting ? 'Submitting...' : 'Submit Exam'}
@@ -402,8 +373,6 @@ const ExamDashboard = () => {
     );
   };
 
-  // ─── PDF MODE RENDER ──────────────────────────────────────────────────────
-
   if (isPdfMode) {
     const pdfSrc = exam.pdf_url.startsWith('http') 
       ? exam.pdf_url 
@@ -411,7 +380,6 @@ const ExamDashboard = () => {
 
     return (
       <div style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {/* Header Bar */}
         <div className="exam-header-bar">
           <h4>{exam.exam_code} &mdash; {student?.name || 'Student'}</h4>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -426,7 +394,6 @@ const ExamDashboard = () => {
           </div>
         </div>
 
-        {/* PDF label */}
         <div style={{ padding: '6px 16px', background: '#f8f9fa', borderBottom: '1px solid #e0e0e0', fontSize: 13, color: '#555' }}>
           Question Paper &mdash; {exam.title}
           <span style={{ float: 'right', color: '#667eea', fontWeight: 600 }}>{attemptedCount} of {totalQ} Answered</span>
@@ -437,7 +404,6 @@ const ExamDashboard = () => {
         )}
 
         <div className="exam-body" style={{ flex: 1, overflow: 'hidden' }}>
-          {/* PDF Viewer */}
           <div className="question-panel" style={{ padding: 0 }}>
             <iframe
               src={pdfSrc}
@@ -445,12 +411,9 @@ const ExamDashboard = () => {
               style={{ width: '100%', height: '100%', border: 'none' }}
             />
           </div>
-
-          {/* OMR Panel */}
           <OmrPanel />
         </div>
 
-        {/* Submit Confirmation Modal */}
         <SubmitModal
           showModal={showModal}
           setShowModal={setShowModal}
@@ -461,7 +424,6 @@ const ExamDashboard = () => {
           unanswered={unanswered}
         />
 
-        {/* Tab Warning Modal */}
         <TabWarningModal
           showWarningModal={showWarningModal}
           setShowWarningModal={setShowWarningModal}
@@ -472,8 +434,6 @@ const ExamDashboard = () => {
       </div>
     );
   }
-
-  // ─── DB QUESTIONS MODE (fallback) ─────────────────────────────────────────
 
   if (!questions.length) {
     return (
@@ -490,7 +450,6 @@ const ExamDashboard = () => {
 
   return (
     <div style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      {/* Header Bar */}
       <div className="exam-header-bar">
         <h4>{exam.title}</h4>
         {tabSwitchCount > 0 && (
@@ -503,7 +462,6 @@ const ExamDashboard = () => {
       {error && <Alert variant="danger" style={{ margin: 16, borderRadius: 10 }}>{error}</Alert>}
 
       <div className="exam-body">
-        {/* Question Panel (Left) */}
         <div className="question-panel">
           <div style={{ padding: 24, height: '100%', overflowY: 'auto' }}>
             <div style={{ marginBottom: 24 }}>
@@ -570,7 +528,6 @@ const ExamDashboard = () => {
           </div>
         </div>
 
-        {/* OMR Panel (Right) */}
         <OmrPanel />
       </div>
 
@@ -579,8 +536,6 @@ const ExamDashboard = () => {
     </div>
   );
 };
-
-// ─── Shared Modal Components ─────────────────────────────────────────────────
 
 const SubmitModal = ({ showModal, setShowModal, confirmSubmit, submitting, totalQ, attemptedCount, unanswered }) => (
   <Modal show={showModal} onHide={() => setShowModal(false)} centered className="modal-confirm">

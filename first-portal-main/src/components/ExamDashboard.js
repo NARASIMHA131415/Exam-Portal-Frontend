@@ -30,7 +30,7 @@ const ExamDashboard = () => {
   const [examTerminated, setExamTerminated] = useState(false);
   const MAX_TAB_SWITCHES = 3;
 
-  // Fetch exam and questions
+  // ✅ FIXED: Fetch exam data with JOIN first
   useEffect(() => {
     fetchExamData();
   }, [examId]);
@@ -38,13 +38,48 @@ const ExamDashboard = () => {
   const fetchExamData = async () => {
     try {
       setLoading(true);
+      setError('');
+
+      console.log('📝 Step 1: Joining exam...');
+      
+      // ✅ STEP 1: First, join the exam
+      try {
+        const joinResponse = await apiService.request(`/api/exam/${examId}/join`, {
+          method: 'POST',
+          body: JSON.stringify({}),
+        });
+        console.log('✅ Join response:', joinResponse);
+      } catch (joinError) {
+        // If join fails with specific errors, handle them
+        if (joinError.message?.includes('already submitted')) {
+          setError('You have already submitted this exam. Cannot retake.');
+          setLoading(false);
+          return;
+        }
+        // Otherwise, student might already be joined, continue
+        console.log('ℹ️ Join status:', joinError.message);
+      }
+
+      console.log('📚 Step 2: Loading exam questions...');
+      
+      // ✅ STEP 2: Now load the questions
       const data = await apiService.getExamQuestions(examId);
+
+      if (!data || !data.exam) {
+        setError('Invalid exam data received');
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ Exam loaded:', data.exam);
+      
       setExam(data.exam);
       setQuestions(data.questions || []);
-      setTimeLeft(data.exam.duration * 60);
-      setError('');
+      setTimeLeft(data.exam.duration * 60); // Convert to seconds
+
     } catch (err) {
-      setError(err.message || 'Failed to load exam');
+      console.error('❌ Error loading exam:', err);
+      setError(err.message || 'Failed to load exam. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -121,7 +156,6 @@ const ExamDashboard = () => {
       setError(err.message || 'Failed to submit exam');
       setSubmitting(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId, answers, submitted, submitting, navigate, isPdfMode]);
 
   const handleAutoSubmit = useCallback(async () => {
@@ -136,7 +170,6 @@ const ExamDashboard = () => {
       setError(err.message || 'Failed to submit exam');
       setSubmitting(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId, answers, submitted, submitting, navigate, isPdfMode]);
 
   // ─── Tab switch detection ─────────────────────────────────────────────────
@@ -170,7 +203,11 @@ const ExamDashboard = () => {
     if (submitted || examTerminated || !exam || loading) return;
     const timer = setInterval(() => {
       setTimeLeft(prev => {
-        if (prev <= 1) { clearInterval(timer); handleAutoSubmit(); return 0; }
+        if (prev <= 1) { 
+          clearInterval(timer); 
+          handleAutoSubmit(); 
+          return 0; 
+        }
         return prev - 1;
       });
     }, 1000);
@@ -368,7 +405,9 @@ const ExamDashboard = () => {
   // ─── PDF MODE RENDER ──────────────────────────────────────────────────────
 
   if (isPdfMode) {
-    const pdfSrc = `http://localhost:5000${exam.pdf_url}`;
+    const pdfSrc = exam.pdf_url.startsWith('http') 
+      ? exam.pdf_url 
+      : `${window.location.origin}${exam.pdf_url}`;
 
     return (
       <div style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -589,7 +628,7 @@ const TabWarningModal = ({ showWarningModal, setShowWarningModal, tabSwitchCount
             : <span className="level-low">Please stay on the exam tab</span>}
         </div>
         {tabSwitchCount < MAX_TAB_SWITCHES && (
-          <Button onClick={() => setShowWarningModal(false)} style={{ borderRadius:10, fontWeight:700, padding:'12px 40px', marginTop:16, fontSize:16, background:'#5B0A7B', border:'none' }}>
+          <Button onClick={() => setShowWarningModal(false)} style={{ borderRadius:10, fontWeight:700, padding:'12px 40px', marginTop:16, fontSize:16, background:'#5B0A7B', border:'none', color:'#fff' }}>
             I Understand — Continue Exam
           </Button>
         )}

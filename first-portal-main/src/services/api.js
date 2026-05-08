@@ -33,7 +33,16 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      
+      // Handle non-JSON responses
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
+      }
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -42,7 +51,9 @@ class ApiService {
           window.location.href = '/login';
           throw new Error('Session expired. Please login again.');
         }
-        throw new Error(data.error || data.message || 'Something went wrong');
+        
+        // Handle backend error format
+        throw new Error(data.message || data.error || 'Something went wrong');
       }
 
       return data;
@@ -57,17 +68,31 @@ class ApiService {
   // ══════════════════════════════════════════════════════════
 
   async login(email, password) {
-    const response = await this.request('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-    
-    if (response.token) {
-      localStorage.setItem('jwt_token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+    try {
+      // ✅ CORRECT ENDPOINT: /api/login
+      const response = await this.request('/api/login', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          email: email.trim().toLowerCase(), 
+          password: password 
+        }),
+      });
+      
+      // ✅ Backend returns: { success: true, data: { token, user } }
+      if (response.success && response.data) {
+        const { token, user } = response.data;
+        
+        localStorage.setItem('jwt_token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        return { token, user };
+      } else {
+        throw new Error(response.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     }
-    
-    return response;
   }
 
   async register(userData) {
@@ -92,7 +117,8 @@ class ApiService {
   }
 
   async getStudentProfile() {
-    return this.request('/api/student/profile');
+    // ✅ Use /api/profile from your backend
+    return this.request('/api/profile');
   }
 
   async changePassword(oldPassword, newPassword) {
@@ -117,7 +143,7 @@ class ApiService {
     const user = this.getUser();
     
     // Admin gets admin list
-    if (user?.role === 'admin') {
+    if (user?.role === 'admin' || user?.role === 'super_admin') {
       return this.request('/api/admin/exams/list');
     }
     

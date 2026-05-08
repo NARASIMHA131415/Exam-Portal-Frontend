@@ -14,84 +14,64 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError('');
-  setLoading(true);
+    e.preventDefault();
+    setError('');
+    setLoading(true);
 
-  try {
-    console.log('🔄 Attempting login...');
-    
-    // Call login API
-    const response = await apiService.login(email.trim().toLowerCase(), password);
-    
-    console.log('✅ Login successful!');
-    console.log('✅ User role:', response.user?.role);
-    
-    const userRole = response.user?.role;
-    
-    // Navigate after short delay
-    setTimeout(() => {
-      if (userRole === 'super_admin' || userRole === 'admin') {
-        console.log('↗️ Navigating to /admin');
-        navigate('/admin', { replace: true });
-      } else if (userRole === 'student') {
-        console.log('↗️ Navigating to /dashboard');
-        navigate('/dashboard', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
-    }, 200);
+    try {
+      console.log('🔄 Attempting login...');
+      
+      // Call login API
+      const response = await apiService.login(email.trim().toLowerCase(), password);
+      
+      console.log('✅ Login successful!');
+      console.log('✅ User role:', response.user?.role);
+      
+      const userRole = response.user?.role;
+      
+      // Navigate after short delay
+      setTimeout(() => {
+        if (userRole === 'super_admin' || userRole === 'admin') {
+          console.log('↗️ Navigating to /admin');
+          navigate('/admin', { replace: true });
+        } else if (userRole === 'student') {
+          console.log('↗️ Navigating to /dashboard');
+          navigate('/dashboard', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
+      }, 200);
 
-  } catch (err) {
-    console.error('❌ Login error:', err);
-    setError(err.message || 'Invalid email or password. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (err) {
+      console.error('❌ Login error:', err);
+      setError(err.message || 'Invalid email or password. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="login-wrapper" style={{
-      minHeight: '100vh',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '20px'
-    }}>
-      <div className="login-card" style={{
-        background: '#fff',
-        borderRadius: 16,
-        padding: '40px',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
-        maxWidth: '400px',
-        width: '100%'
-      }}>
+    <div className="login-wrapper">
+      <div className="login-card">
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <div style={{ textAlign: 'center', marginBottom: 8 }}>
           <div style={{
-            width: 60,
-            height: 60,
-            borderRadius: 16,
+            width: 56,
+            height: 56,
+            borderRadius: 14,
             background: 'linear-gradient(135deg, #667eea, #764ba2)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: 20,
-            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-            fontSize: 28,
-            color: '#fff',
-            fontWeight: 700
+            marginBottom: 16,
+            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
           }}>
-            EP
+            <span style={{ fontSize: 22, color: '#fff', fontWeight: 700 }}>EP</span>
           </div>
         </div>
 
-        <h2 style={{ textAlign: 'center', marginBottom: 8, fontWeight: 700, color: '#1a1a2e' }}>
-          Welcome Back
-        </h2>
-        <p style={{ textAlign: 'center', color: '#888', marginBottom: 24, fontSize: 14 }}>
-          Online Examination Platform
-        </p>
+        <h2>Welcome Back</h2>
+        <p className="subtitle">Online Examination &amp; Assessment Platform</p>
 
         {/* Error Alert */}
         {error && (
@@ -99,7 +79,8 @@ const LoginPage = () => {
             variant="danger" 
             dismissible 
             onClose={() => setError('')}
-            style={{ borderRadius: 10, marginBottom: 20 }}
+            className="py-2" 
+            style={{ borderRadius: 10, fontSize: 14 }}
           >
             {error}
           </Alert>
@@ -114,7 +95,7 @@ const LoginPage = () => {
             </Form.Label>
             <Form.Control
               type="email"
-              placeholder="admin@examportal.com"
+              placeholder="Enter your email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -126,17 +107,20 @@ const LoginPage = () => {
                 fontSize: 14
               }}
             />
+            <Form.Text style={{ color: '#888', fontSize: 11 }}>
+              Use the email provided by your administrator
+            </Form.Text>
           </Form.Group>
 
           {/* Password Field */}
-          <Form.Group className="mb-3">
+          <Form.Group className="mb-2">
             <Form.Label style={{ fontWeight: 600, fontSize: 14, color: '#555' }}>
               Password
             </Form.Label>
             <div style={{ position: 'relative' }}>
               <Form.Control
                 type={showPassword ? 'text' : 'password'}
-                placeholder="SuperAdmin@123"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -152,7 +136,6 @@ const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                disabled={loading}
                 style={{
                   position: 'absolute',
                   right: 12,
@@ -162,17 +145,32 @@ const LoginPage = () => {
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: 18,
+                  color: '#888',
                   padding: 4
                 }}
+                disabled={loading}
               >
                 {showPassword ? '👁️' : '👁️‍🗨️'}
               </button>
             </div>
           </Form.Group>
 
+          {/* Show Password Checkbox */}
+          <Form.Group className="mb-4">
+            <Form.Check
+              type="checkbox"
+              label="Show Password"
+              checked={showPassword}
+              onChange={(e) => setShowPassword(e.target.checked)}
+              style={{ fontSize: 13, color: '#888' }}
+              disabled={loading}
+            />
+          </Form.Group>
+
           {/* Submit Button */}
           <Button 
             type="submit" 
+            className="btn-login" 
             disabled={loading}
             style={{
               width: '100%',
@@ -185,8 +183,7 @@ const LoginPage = () => {
               color: '#fff',
               cursor: loading ? 'not-allowed' : 'pointer',
               transition: 'all 0.3s',
-              boxShadow: loading ? 'none' : '0 4px 12px rgba(102, 126, 234, 0.3)',
-              marginTop: 16
+              boxShadow: loading ? 'none' : '0 4px 12px rgba(102, 126, 234, 0.3)'
             }}
           >
             {loading ? (
@@ -200,20 +197,59 @@ const LoginPage = () => {
           </Button>
         </Form>
 
-        {/* Demo Credentials */}
-        <div style={{
+        {/* Contact Admin Notice */}
+        <div style={{ 
+          textAlign: 'center', 
           marginTop: 24,
           padding: 16,
           background: '#f8f9fa',
           borderRadius: 10,
-          textAlign: 'center'
+          border: '1px solid #e0e0e0'
         }}>
-          <strong style={{ fontSize: 12, color: '#555', display: 'block', marginBottom: 8 }}>
-            Demo Credentials:
-          </strong>
-          <div style={{ fontSize: 12, color: '#888', lineHeight: 1.8 }}>
-          
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ fontSize: 18 }}>👤</span>
           </div>
+          <small style={{ color: '#666', fontSize: 13, lineHeight: 1.6, display: 'block' }}>
+            <strong style={{ color: '#333' }}>Don't have an account?</strong>
+            <br />
+            Contact your administrator to create your login credentials
+          </small>
+        </div>
+
+        {/* Help Section */}
+        <div style={{ 
+          marginTop: 20,
+          padding: 16,
+          background: '#e3f2fd',
+          borderRadius: 10,
+          border: '1px solid #bbdefb'
+        }}>
+          <div style={{ 
+            fontSize: 12, 
+            fontWeight: 600, 
+            color: '#1976d2',
+            marginBottom: 8,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}>
+            <span>ℹ️</span>
+            <span>Having trouble logging in?</span>
+          </div>
+          <div style={{ fontSize: 12, color: '#555', lineHeight: 1.6 }}>
+            • Ensure you're using the email provided by your institution
+            <br />
+            • Password is case-sensitive
+            <br />
+            • Contact your administrator if you forgot your password
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ textAlign: 'center', marginTop: 24 }}>
+          <small style={{ color: '#aaa', fontSize: 11 }}>
+            © 2024 ExamPortal. Secure Online Examination Platform.
+          </small>
         </div>
       </div>
     </div>

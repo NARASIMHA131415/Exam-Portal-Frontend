@@ -14,49 +14,41 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    try {
-      console.log('🔄 Attempting login with email:', email);
-      
-      // Call login API
-      const response = await apiService.login(email.trim().toLowerCase(), password);
-      
-      console.log('✅ Login successful!');
-      console.log('✅ Response:', response);
-      console.log('✅ Token:', localStorage.getItem('jwt_token'));
-      console.log('✅ User:', localStorage.getItem('user'));
-      
-      const userRole = response.user?.role;
-      console.log('✅ User role:', userRole);
-      
-      // Check what was saved
-      const savedUser = apiService.getUser();
-      console.log('✅ Retrieved user from storage:', savedUser);
-      
-      // Navigate based on role with slight delay
-      setTimeout(() => {
-        if (userRole === 'super_admin' || userRole === 'admin') {
-          console.log('↗️ Navigating to /admin');
-          navigate('/admin', { replace: true });
-        } else if (userRole === 'student') {
-          console.log('↗️ Navigating to /dashboard');
-          navigate('/dashboard', { replace: true });
-        } else {
-          console.log('⚠️ Unknown role, navigating to /dashboard');
-          navigate('/dashboard', { replace: true });
-        }
-      }, 200);
+  try {
+    console.log('🔄 Attempting login...');
+    
+    // Call login API
+    const response = await apiService.login(email.trim().toLowerCase(), password);
+    
+    console.log('✅ Login successful!');
+    console.log('✅ User role:', response.user?.role);
+    
+    const userRole = response.user?.role;
+    
+    // Navigate after short delay
+    setTimeout(() => {
+      if (userRole === 'super_admin' || userRole === 'admin') {
+        console.log('↗️ Navigating to /admin');
+        navigate('/admin', { replace: true });
+      } else if (userRole === 'student') {
+        console.log('↗️ Navigating to /dashboard');
+        navigate('/dashboard', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }, 200);
 
-    } catch (err) {
-      console.error('❌ Login error:', err);
-      setError(err.message || 'Invalid email or password. Please try again.');
-      setLoading(false);
-    }
-  };
-
+  } catch (err) {
+    console.error('❌ Login error:', err);
+    setError(err.message || 'Invalid email or password. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <div className="login-wrapper" style={{
       minHeight: '100vh',

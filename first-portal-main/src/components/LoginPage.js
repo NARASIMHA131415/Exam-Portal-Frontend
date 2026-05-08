@@ -21,6 +21,8 @@ const LoginPage = () => {
     try {
       // Call login API
       const response = await apiService.login(email.trim(), password);
+
+      const userRole = response.user.role;
       
       // Redirect based on user role
       if (response.user.role === 'admin') {

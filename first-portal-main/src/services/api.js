@@ -239,37 +239,39 @@ class ApiService {
   // STUDENT MANAGEMENT APIs
   // ══════════════════════════════════════════════════════════
 
-  async getStudents() {
-    return this.request('/api/admin/students/list');
-  }
+  // In your ApiService class in src/services/api.js
 
-  async createStudent(studentData) {
-    return this.request('/api/admin/students/create', {
-      method: 'POST',
-      body: JSON.stringify(studentData),
-    });
-  }
+// ── Student Management APIs ──
+
+async getStudents() {
+  return this.request('/api/admin/list-students');
+}
+
+async createStudent(studentData) {
+  return this.request('/api/admin/students/create', {
+    method: 'POST',
+    body: JSON.stringify(studentData),
+  });
+}
+
+async deleteStudent(studentId) {
+  return this.request(`/api/admin/students/${studentId}`, {
+    method: 'DELETE',
+  });
+}
+
+async bulkCreateStudents(file) {
+  // This now handles FormData for CSV upload
+  return this.request('/api/admin/bulk-create-students', {
+    method: 'POST',
+    body: file,  // FormData object
+  });
+}
 
   async updateStudent(studentId, studentData) {
     return this.request(`/api/admin/students/${studentId}`, {
       method: 'PUT',
       body: JSON.stringify(studentData),
-    });
-  }
-
-  async deleteStudent(studentId) {
-    return this.request(`/api/admin/students/${studentId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  async bulkCreateStudents(file) {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    return this.request('/api/admin/students/bulk-create', {
-      method: 'POST',
-      body: formData,
     });
   }
 

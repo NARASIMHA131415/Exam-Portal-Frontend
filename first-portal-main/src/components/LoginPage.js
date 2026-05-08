@@ -19,18 +19,34 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
+      console.log('🔄 Attempting login...');
+      
       // Call login API
       const response = await apiService.login(email.trim(), password);
-
-      const userRole = response.user.role;
       
-      // Redirect based on user role
-      if (response.user.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/dashboard');
-      }
+      console.log('✅ Login response:', response);
+      console.log('✅ Token saved:', localStorage.getItem('jwt_token'));
+      console.log('✅ User saved:', localStorage.getItem('user'));
+      
+      const userRole = response.user.role;
+      console.log('✅ User role:', userRole);
+      
+      // Navigate after a short delay to ensure state updates
+      setTimeout(() => {
+        if (userRole === 'super_admin' || userRole === 'admin') {
+          console.log('↗️  Navigating to /admin');
+          navigate('/admin', { replace: true });
+        } else if (userRole === 'student') {
+          console.log('↗️  Navigating to /dashboard');
+          navigate('/dashboard', { replace: true });
+        } else {
+          console.log('↗️  Navigating to /dashboard (default)');
+          navigate('/dashboard', { replace: true });
+        }
+      }, 100);
+
     } catch (err) {
+      console.error('❌ Login error:', err);
       setError(err.message || 'Invalid email or password. Please try again.');
     } finally {
       setLoading(false);
@@ -231,7 +247,6 @@ const LoginPage = () => {
             • Contact your administrator if you forgot your password
           </div>
         </div>
-
 
         {/* Footer */}
         <div style={{ textAlign: 'center', marginTop: 24 }}>

@@ -212,8 +212,7 @@ const LoginPage = () => {
             Demo Credentials:
           </strong>
           <div style={{ fontSize: 12, color: '#888', lineHeight: 1.8 }}>
-            📧 admin@examportal.com<br/>
-            🔑 SuperAdmin@123
+          
           </div>
         </div>
       </div>

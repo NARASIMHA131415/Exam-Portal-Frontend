@@ -121,25 +121,48 @@ const StudentManagement = () => {
   }, [form.name, autoPass]);
 
   /* ── single create ── */
-  const handleSingleCreate = async (e) => {
-    e.preventDefault();
-    setError(''); setSuccess('');
-    if (!form.name || !form.email || !form.password) return setError('All fields are required.');
-    setActionLoading(true);
-    try {
-      const res = await apiService.bulkCreateStudents([{ name: form.name, email: form.email, password: form.password }]);
-      if (res.created?.length) {
-        setSuccess(`✅ Student "${form.name}" created! Email: ${form.email} | Password: ${form.password}`);
-        setForm({ name: '', email: '', password: '' });
-        fetchStudents();
-      } else if (res.skipped?.length) {
-        setError(`Email "${form.email}" already exists.`);
-      } else {
-        setError(res.errors?.[0] || 'Failed to create student.');
-      }
-    } catch (e) { setError(e.message); }
-    setActionLoading(false);
-  };
+  /* ── single create ── */
+const handleSingleCreate = async (e) => {
+  e.preventDefault();
+  setError(''); 
+  setSuccess('');
+  
+  if (!form.name || !form.email || !form.password) {
+    return setError('All fields are required.');
+  }
+  
+  setActionLoading(true);
+  
+  try {
+    // ✅ CORRECT ENDPOINT: /api/admin/students/create
+    // ✅ CORRECT FORMAT: Send as JSON (not bulk array)
+    const res = await apiService.request('/api/admin/students/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+        first_name: form.name.trim().split(' ')[0],  // First word is first name
+        last_name: form.name.trim().split(' ').slice(1).join(' ') || null,  // Rest is last name
+      }),
+    });
+    
+    console.log('✅ Student created:', res);
+    
+    if (res.success && res.data) {
+      setSuccess(`✅ Student "${form.name}" created!\n📧 Email: ${form.email}\n🔑 Password: ${form.password}`);
+      setForm({ name: '', email: '', password: '' });
+      fetchStudents();
+    } else {
+      setError(res.message || 'Failed to create student.');
+    }
+    
+  } catch (e) {
+    console.error('❌ Error:', e);
+    setError(e.message || 'Failed to create student.');
+  }
+  
+  setActionLoading(false);
+};
 
   /* ── bulk text parse ── */
   const parseBulkText = (text) => {
@@ -176,22 +199,80 @@ const StudentManagement = () => {
   };
 
   /* ── bulk submit ── */
-  const handleBulkCreate = async () => {
-    setError(''); setSuccess(''); setBulkResult(null);
-    const validStudents = bulkPreview.filter(s => s._valid).map(({ name, email, password }) => ({ name, email, password }));
-    if (!validStudents.length) return setError('No valid student records found.');
-    setActionLoading(true);
-    try {
-      const res = await apiService.bulkCreateStudents(validStudents);
-      setBulkResult(res);
-      if (res.created?.length) {
-        setSuccess(`✅ ${res.created.length} student(s) created successfully!`);
-        fetchStudents();
+  /* ── bulk submit ── */
+const handleBulkCreate = async () => {
+  setError(''); 
+  setSuccess(''); 
+  setBulkResult(null);
+  
+  const validStudents = bulkPreview
+    .filter(s => s._valid)
+    .map(({ name, email, password }) => ({
+      email: email.toLowerCase(),
+      password: password,
+      first_name: name.trim().split(' ')[0],
+      last_name: name.trim().split(' ').slice(1).join(' ') || null,
+    }));
+  
+  if (!validStudents.length) {
+    return setError('No valid student records found.');
+  }
+  
+  setActionLoading(true);
+  
+  try {
+    // ✅ Use the correct endpoint
+    const formData = new FormData();
+    
+    // Create CSV content from validStudents
+    const csvContent = [
+      'email,password,first_name,last_name',
+      ...validStudents.map(s => 
+        `${s.email},${s.password},"${s.first_name}","${s.last_name || ''}"`
+      )
+    ].join('\n');
+    
+    // Create Blob and append to FormData
+    const csvBlob = new Blob([csvContent], { type: 'text/csv' });
+    formData.append('file', csvBlob, 'students.csv');
+    
+    // Send as FormData (this endpoint expects file)
+    const res = await fetch(
+      `${apiService.baseURL}/api/admin/bulk-create-students`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: formData
       }
-      if (res.errors?.length) setError(res.errors.join(', '));
-    } catch (e) { setError(e.message); }
-    setActionLoading(false);
-  };
+    );
+    
+    const data = await res.json();
+    console.log('✅ Bulk response:', data);
+    
+    if (data.success) {
+      setBulkResult(data.data);
+      const created = data.data.summary.created;
+      setSuccess(`✅ ${created} student(s) created successfully!`);
+      fetchStudents();
+      
+      // Clear form after 3 seconds
+      setTimeout(() => {
+        setBulkText('');
+        setBulkPreview([]);
+      }, 3000);
+    } else {
+      setError(data.message || 'Failed to create students');
+    }
+    
+  } catch (e) {
+    console.error('❌ Error:', e);
+    setError(e.message || 'Failed to create students');
+  }
+  
+  setActionLoading(false);
+};
 
   /* ── delete ── */
   const handleDelete = async (id, name) => {

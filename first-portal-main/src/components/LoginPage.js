@@ -19,31 +19,60 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      console.log('🔄 Attempting login...');
+      const emailTrimmed = email.trim().toLowerCase();
+      const passwordTrimmed = password.trim();
       
-      // Call login API
-      const response = await apiService.login(email.trim().toLowerCase(), password);
+      console.log('🔄 Step 1: Attempting login...');
+      console.log('  - Email:', emailTrimmed);
+      console.log('  - Password length:', passwordTrimmed.length);
       
-      console.log('✅ Login successful!');
-      console.log('✅ User role:', response.user?.role);
+      // ✅ Call login API
+      const response = await apiService.login(emailTrimmed, passwordTrimmed);
+      
+      console.log('🔄 Step 2: Login API response received');
+      console.log('  - Response object:', response);
+      console.log('  - Has token?', !!response?.token);
+      console.log('  - Has user?', !!response?.user);
+      console.log('  - User role:', response?.user?.role);
+      
+      // ✅ Verify data is in localStorage
+      const storedToken = localStorage.getItem('jwt_token');
+      const storedUser = localStorage.getItem('user');
+      
+      console.log('🔄 Step 3: Checking localStorage');
+      console.log('  - jwt_token saved?', !!storedToken);
+      console.log('  - user saved?', !!storedUser);
+      
+      if (!storedToken || !storedUser) {
+        console.error('❌ ERROR: Data not saved to localStorage!');
+        setError('Login failed: Data could not be saved. Please try again.');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('✅ Step 4: All data verified in localStorage');
       
       const userRole = response.user?.role;
       
-      // Navigate after short delay
-      setTimeout(() => {
-        if (userRole === 'super_admin' || userRole === 'admin') {
-          console.log('↗️ Navigating to /admin');
-          navigate('/admin', { replace: true });
-        } else if (userRole === 'student') {
-          console.log('↗️ Navigating to /dashboard');
-          navigate('/dashboard', { replace: true });
-        } else {
-          navigate('/dashboard', { replace: true });
-        }
-      }, 200);
+      console.log('✅ Step 5: Navigating...');
+      console.log('  - User role:', userRole);
+      
+      // ✅ Navigate based on role
+      if (userRole === 'super_admin' || userRole === 'admin') {
+        console.log('  ↗️ Redirecting to /admin');
+        navigate('/admin', { replace: true });
+      } else if (userRole === 'student') {
+        console.log('  ↗️ Redirecting to /dashboard');
+        navigate('/dashboard', { replace: true });
+      } else {
+        console.log('  ⚠️ Unknown role, redirecting to /dashboard');
+        navigate('/dashboard', { replace: true });
+      }
 
     } catch (err) {
-      console.error('❌ Login error:', err);
+      console.error('❌ Login Error:', err);
+      console.error('  - Error message:', err.message);
+      console.error('  - Error stack:', err.stack);
       setError(err.message || 'Invalid email or password. Please try again.');
     } finally {
       setLoading(false);
@@ -210,9 +239,11 @@ const LoginPage = () => {
             <span style={{ fontSize: 18 }}>👤</span>
           </div>
           <small style={{ color: '#666', fontSize: 13, lineHeight: 1.6, display: 'block' }}>
-            <strong style={{ color: '#333' }}>Don't have an account?</strong>
+            <strong style={{ color: '#333' }}>Demo Credentials:</strong>
             <br />
-            Contact your administrator to create your login credentials
+            📧 admin@examportal.com
+            <br />
+            🔑 SuperAdmin@123
           </small>
         </div>
 

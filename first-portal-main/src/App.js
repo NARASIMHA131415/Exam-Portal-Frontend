@@ -17,8 +17,21 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    const isAuth = apiService.isAuthenticated();
-    console.log('✅ App mounted - isAuthenticated:', isAuth);
+    // ✅ Check if user is authenticated by looking at localStorage directly
+    const token = localStorage.getItem('jwt_token');
+    const user = localStorage.getItem('user');
+    
+    console.log('🔍 App.js - Authentication Check:');
+    console.log('  - Token in localStorage:', !!token);
+    console.log('  - User in localStorage:', !!user);
+    
+    if (token && user) {
+      const userData = JSON.parse(user);
+      console.log('✅ User authenticated - Role:', userData?.role);
+    } else {
+      console.log('❌ No user authenticated');
+    }
+    
     setAuthChecked(true);
   }, []);
 
@@ -139,30 +152,39 @@ function App() {
             }
           />
 
-          {/* DEFAULT ROUTES */}
+          {/* DEFAULT HOME ROUTE */}
           <Route
             path="/"
             element={
-              apiService.isAuthenticated() ? (
-                (() => {
-                  const user = apiService.getUser();
-                  const role = user?.role;
-                  
-                  if (role === 'admin' || role === 'super_admin') {
-                    return <Navigate to="/admin" replace />;
-                  } else if (role === 'student') {
-                    return <Navigate to="/dashboard" replace />;
-                  } else {
-                    return <Navigate to="/login" replace />;
+              (() => {
+                // ✅ Check authentication directly from localStorage
+                const token = localStorage.getItem('jwt_token');
+                const user = localStorage.getItem('user');
+                
+                if (token && user) {
+                  try {
+                    const userData = JSON.parse(user);
+                    const role = userData?.role;
+                    
+                    console.log('🏠 Home route - User authenticated, redirecting to:', role);
+                    
+                    if (role === 'admin' || role === 'super_admin') {
+                      return <Navigate to="/admin" replace />;
+                    } else if (role === 'student') {
+                      return <Navigate to="/dashboard" replace />;
+                    }
+                  } catch (e) {
+                    console.error('Error parsing user data:', e);
                   }
-                })()
-              ) : (
-                <Navigate to="/login" replace />
-              )
+                }
+                
+                console.log('🏠 Home route - No user, redirecting to login');
+                return <Navigate to="/login" replace />;
+              })()
             }
           />
 
-          {/* 404 */}
+          {/* 404 ROUTE */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

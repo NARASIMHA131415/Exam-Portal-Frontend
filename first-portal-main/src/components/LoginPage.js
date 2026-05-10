@@ -235,7 +235,10 @@ const LoginPage = () => {
           borderRadius: 10,
           border: '1px solid #e0e0e0'
         }}>
-          </div>
+          <small style={{ color: '#888', fontSize: 12 }}>
+            Don't have login credentials? Contact your administrator.
+          </small>
+        </div>
 
         {/* Help Section */}
         <div style={{ 

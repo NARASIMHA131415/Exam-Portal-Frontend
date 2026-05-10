@@ -235,17 +235,6 @@ const LoginPage = () => {
           borderRadius: 10,
           border: '1px solid #e0e0e0'
         }}>
-          <div style={{ marginBottom: 8 }}>
-            <span style={{ fontSize: 18 }}>👤</span>
-          </div>
-          <small style={{ color: '#666', fontSize: 13, lineHeight: 1.6, display: 'block' }}>
-            <strong style={{ color: '#333' }}>Demo Credentials:</strong>
-            <br />
-            📧 admin@examportal.com
-            <br />
-            🔑 SuperAdmin@123
-          </small>
-        </div>
 
         {/* Help Section */}
         <div style={{ 

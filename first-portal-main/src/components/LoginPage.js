@@ -235,6 +235,7 @@ const LoginPage = () => {
           borderRadius: 10,
           border: '1px solid #e0e0e0'
         }}>
+          </div>
 
         {/* Help Section */}
         <div style={{ 

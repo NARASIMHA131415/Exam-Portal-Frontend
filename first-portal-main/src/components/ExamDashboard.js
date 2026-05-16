@@ -36,52 +36,57 @@ const ExamDashboard = () => {
   }, [examId]);
 
   const fetchExamData = async () => {
-    try {
-      setLoading(true);
-      setError('');
+  try {
+    setLoading(true);
+    setError('');
 
-      console.log('📝 Step 1: Getting exam details...');
-      
-      // ✅ STEP 1: Get exam details (which includes exam_code)
-      const examData = await apiService.getExamQuestions(examId);
-      
-      if (!examData || !examData.exam) {
-        setError('Invalid exam data received');
-        setLoading(false);
-        return;
-      }
+    console.log('📝 Fetching exam data for ID:', examId);
+    
+    // Get exam details
+    const examData = await apiService.getExamQuestions(examId);
+    
+    if (!examData || !examData.exam) {
+      setError('Exam not found');
+      setLoading(false);
+      return;
+    }
 
+    console.log('✅ Got exam:', examData.exam);
+    
+    // Check if student has already joined
+    if (examData.submission) {
+      console.log('✅ Already joined:', examData.submission);
+    } else {
+      // Try to auto-join using exam code
       const examCode = examData.exam.exam_code;
-      console.log('✅ Got exam code:', examCode);
-
-      console.log('📝 Step 2: Joining exam with code...');
+      console.log('📝 Auto-joining exam with code:', examCode);
       
-      // ✅ STEP 2: Join using exam_code (not exam_id)
       try {
         await apiService.joinExam(examCode);
-        console.log('✅ Joined exam successfully');
+        console.log('✅ Auto-joined successfully');
       } catch (joinError) {
-        if (joinError.message?.includes('already submitted')) {
-          setError('You have already submitted this exam. Cannot retake.');
+        console.error('⚠️ Join failed:', joinError.message);
+        if (joinError.message?.includes('must join')) {
+          setError('Please use the exam code to join first');
           setLoading(false);
           return;
         }
-        console.log('ℹ️ Join status:', joinError.message);
       }
-
-      console.log('✅ Exam loaded successfully');
-      
-      setExam(examData.exam);
-      setQuestions(examData.questions || []);
-      setTimeLeft(examData.exam.duration * 60);
-
-    } catch (err) {
-      console.error('❌ Error loading exam:', err);
-      setError(err.message || 'Failed to load exam. Please try again.');
-    } finally {
-      setLoading(false);
     }
-  };
+    
+    setExam(examData.exam);
+    setQuestions(examData.questions || []);
+    setTimeLeft(examData.exam.duration * 60);
+
+    console.log('✅ Exam ready');
+
+  } catch (err) {
+    console.error('❌ Error:', err);
+    setError(err.message || 'Failed to load exam');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const isPdfMode = exam && exam.pdf_url;
   const totalQ = isPdfMode ? exam.total_questions : questions.length;

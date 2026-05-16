@@ -69,7 +69,6 @@ class ApiService {
 
   async login(email, password) {
     try {
-      // ✅ CORRECT ENDPOINT: /api/login
       const response = await this.request('/api/login', {
         method: 'POST',
         body: JSON.stringify({ 
@@ -78,7 +77,6 @@ class ApiService {
         }),
       });
       
-      // ✅ Backend returns: { success: true, data: { token, user } }
       if (response.success && response.data) {
         const { token, user } = response.data;
         
@@ -117,7 +115,6 @@ class ApiService {
   }
 
   async getStudentProfile() {
-    // ✅ Use /api/profile from your backend
     return this.request('/api/profile');
   }
 
@@ -211,7 +208,7 @@ class ApiService {
   async createExamPDF(formData) {
     return this.request('/api/exams/create-with-pdf', {
       method: 'POST',
-      body: formData,  // FormData with PDF
+      body: formData,
     });
   }
 
@@ -239,34 +236,43 @@ class ApiService {
   // STUDENT MANAGEMENT APIs
   // ══════════════════════════════════════════════════════════
 
-  // In your ApiService class in src/services/api.js
+  async getStudents() {
+    return this.request('/api/admin/students/list');
+  }
 
-// ── Student Management APIs ──
+  async createStudent(studentData) {
+    try {
+      console.log('📝 Creating student with data:', studentData);
+      
+      const response = await this.request('/api/admin/students/create', {
+        method: 'POST',
+        body: JSON.stringify(studentData),
+      });
 
-async getStudents() {
-  return this.request('/api/admin/list-students');
-}
+      console.log('✅ Student created successfully:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Create student error:', error);
+      throw error;
+    }
+  }
 
-async createStudent(studentData) {
-  return this.request('/api/admin/students/create', {
-    method: 'POST',
-    body: JSON.stringify(studentData),
-  });
-}
+  async deleteStudent(studentId) {
+    return this.request(`/api/admin/students/${studentId}`, {
+      method: 'DELETE',
+    });
+  }
 
-async deleteStudent(studentId) {
-  return this.request(`/api/admin/students/${studentId}`, {
-    method: 'DELETE',
-  });
-}
-
-async bulkCreateStudents(file) {
-  // This now handles FormData for CSV upload
-  return this.request('/api/admin/bulk-create-students', {
-    method: 'POST',
-    body: file,  // FormData object
-  });
-}
+  async bulkCreateStudents(file) {
+    // FormData for CSV upload
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    return this.request('/api/admin/students/bulk-create', {
+      method: 'POST',
+      body: formData,
+    });
+  }
 
   async updateStudent(studentId, studentData) {
     return this.request(`/api/admin/students/${studentId}`, {
